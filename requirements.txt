@@ -1,4 +1,4 @@
 flask
 requests
-pickle5
+pickle
 gunicorn
