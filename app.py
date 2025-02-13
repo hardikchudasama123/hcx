@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request
 import pickle
 import requests
-import os
 
 app = Flask(__name__)
 
@@ -43,6 +42,4 @@ def home():
     return render_template("index.html", movie_list=movies["title"].values, recommendations=zip(recommended_movies, recommended_posters))
 
 if __name__ == "__main__":
-   
-    port = int(os.environ.get("PORT", 8080))  # Default port 8080
-    app.run(host="0.0.0.0", port=port)
+   app.run(debug=True)
