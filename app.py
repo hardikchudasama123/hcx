@@ -42,4 +42,4 @@ def home():
     return render_template("index.html", movie_list=movies["title"].values, recommendations=zip(recommended_movies, recommended_posters))
 
 if __name__ == "__main__":
-   app.run(debug=True)
+   app.run()
