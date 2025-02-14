@@ -1,45 +1,89 @@
-from flask import Flask, render_template, request
 import pickle
+import streamlit as st
 import requests
 
-app = Flask(__name__)
-
-OMDB_API_KEY = "b249dfe7"
-
-# Load movie data & similarity matrix
-movies = pickle.load(open("movie_list1.pkl", "rb"))
-similarity = pickle.load(open("similarity.pkl", "rb"))
-
+# OMDb API se movie poster fetch karne ka function
 def fetch_poster(movie_name):
-    """Fetch movie poster from OMDb API"""
-    url = f"http://www.omdbapi.com/?t={movie_name}&apikey={OMDB_API_KEY}"
-    response = requests.get(url).json()
-    return response.get("Poster", "https://via.placeholder.com/300x450")  # Default if no poster found
+    API_KEY = "b249dfe7"  # Tumhari API key
+    url = f"http://www.omdbapi.com/?t={movie_name}&apikey={API_KEY}"
+    data = requests.get(url).json()
+    
+    if data.get("Response") == "True" and "Poster" in data and data["Poster"] != "N/A":
+        return data["Poster"]
+    else:
+        return "https://via.placeholder.com/500x750?text=No+Image"
 
+# Recommendation function
 def recommend(movie):
-    """Return 5 recommended movies & their posters"""
-    index = movies[movies['title'] == movie].index[0]
-    distances = sorted(enumerate(similarity[index]), reverse=True, key=lambda x: x[1])
-    
-    recommended_movies = []
-    recommended_posters = []
-    
-    for i in distances[1:15]:  # Top 5 Recommendations
-        movie_name = movies.iloc[i[0]].title
-        recommended_movies.append(movie_name)
-        recommended_posters.append(fetch_poster(movie_name))
+    try:
+        index = movies[movies['title'] == movie].index[0]
+        distances = sorted(list(enumerate(similarity[index])), reverse=True, key=lambda x: x[1])
+        
+        recommended_movie_names = []
+        recommended_movie_posters = []
+        
+        for i in distances[1:11]:  # Top 10 recommendations
+            movie_name = movies.iloc[i[0]].title
+            recommended_movie_names.append(movie_name)
+            recommended_movie_posters.append(fetch_poster(movie_name))
+        
+        return recommended_movie_names, recommended_movie_posters
+    except Exception as e:
+        st.error(f"⚠️ Error: {str(e)}")
+        return [], []
 
-    return recommended_movies, recommended_posters
+# Streamlit UI
+st.header('🎬 Movie Recommender System')
 
-@app.route("/", methods=["GET", "POST"])
-def home():
-    recommended_movies, recommended_posters = [], []
-    
-    if request.method == "POST":
-        selected_movie = request.form.get("movie_name")
-        recommended_movies, recommended_posters = recommend(selected_movie)
-    
-    return render_template("index.html", movie_list=movies["title"].values, recommendations=zip(recommended_movies, recommended_posters))
+# Load model
+try:
+    movies = pickle.load(open('movie_list1.pkl', 'rb'))
+    similarity = pickle.load(open('similarity.pkl', 'rb'))
+except FileNotFoundError:
+    st.error("⚠️ Required files not found! Please check 'movie_list1.pkl' and 'similarity.pkl'.")
+    st.stop()
 
-if __name__ == "__main__":
-   app.run()
+# Movie selection dropdown
+movie_list = movies['title'].values
+selected_movie = st.selectbox("🔍 Type or select a movie from the dropdown", movie_list)
+
+# Show recommendations
+if st.button('🎥 Show Recommendation'):
+    recommended_movie_names, recommended_movie_posters = recommend(selected_movie)
+    
+    if recommended_movie_names:
+        # 🔹 First Row (5 Movies)
+        cols1 = st.columns(5)
+        for col, name, poster in zip(cols1, recommended_movie_names[:5], recommended_movie_posters[:5]):
+            with col:
+                st.image(poster, use_container_width=True)  # ✅ Updated parameter
+                st.write(name)
+        
+        # 🔹 Second Row (5 Movies)
+        cols2 = st.columns(5)
+        for col, name, poster in zip(cols2, recommended_movie_names[5:], recommended_movie_posters[5:]):
+            with col:
+                st.image(poster, use_container_width=True)  # ✅ Updated parameter
+                st.write(name)
+    else:
+        st.warning("⚠️ No recommendations found. Try another movie!")
+
+# Footer
+st.markdown("""
+    <style>
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: #f8f9fa;
+            text-align: center;
+            padding: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+    <div class="footer">
+        Developed by Hardik Chudasama 🚀
+    </div>
+""", unsafe_allow_html=True)
