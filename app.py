@@ -1,12 +1,19 @@
 import pickle
 import streamlit as st
 import requests
+from requests.utils import quote
 
 # OMDb API se movie poster fetch karne ka function
 def fetch_poster(movie_name):
     API_KEY = "b249dfe7"  # Tumhari API key
-    url = f"http://www.omdbapi.com/?t={movie_name}&apikey={API_KEY}"
-    data = requests.get(url).json()
+    encoded_name = quote(movie_name)
+    url = f"http://www.omdbapi.com/?t={encoded_name}&apikey={API_KEY}"
+    
+    try:
+        response = requests.get(url, timeout=5)
+        data = response.json()
+    except requests.RequestException:
+        return "https://via.placeholder.com/500x750?text=No+Image"
     
     if data.get("Response") == "True" and "Poster" in data and data["Poster"] != "N/A":
         return data["Poster"]
@@ -33,6 +40,7 @@ def recommend(movie):
         return [], []
 
 # Streamlit UI
+st.set_page_config(page_title="Movie Recommender System", layout="wide")
 st.header('🎬 Movie Recommender System')
 
 # Load model
@@ -56,15 +64,15 @@ if st.button('🎥 Show Recommendation'):
         cols1 = st.columns(5)
         for col, name, poster in zip(cols1, recommended_movie_names[:5], recommended_movie_posters[:5]):
             with col:
-                st.image(poster, use_container_width=True)  # ✅ Updated parameter
-                st.write(name)
+                st.image(poster, use_container_width=True)
+                st.caption(name)
         
         # 🔹 Second Row (5 Movies)
         cols2 = st.columns(5)
         for col, name, poster in zip(cols2, recommended_movie_names[5:], recommended_movie_posters[5:]):
             with col:
-                st.image(poster, use_container_width=True)  # ✅ Updated parameter
-                st.write(name)
+                st.image(poster, use_container_width=True)
+                st.caption(name)
     else:
         st.warning("⚠️ No recommendations found. Try another movie!")
 
